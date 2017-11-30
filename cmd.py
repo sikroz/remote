@@ -16,10 +16,11 @@ def escape(args):
 
 def main():
     server = Server()
-    cwd = os.getcwd()
+    local_cwd = os.getcwd()
+    remote_cwd = local_cwd.replace(config.SRC, config.REMOTE_SRC)
     log = open('/tmp/cmd.log', 'a')
     log.write('argv: ' + str(sys.argv) + '\n')
-    log.write('cwd: ' + cwd + '\n')
+    log.write('cwd: ' + local_cwd + '\n')
     log.close()
 
     argv = sys.argv
@@ -27,46 +28,39 @@ def main():
     argv0 = argv0.split('/')[-1]
     argv[0] = argv0
 
-    if cwd.startswith(config.SRC):
-        if os.path.exists(os.path.join(cwd, '..', 'conanfile.txt')) or os.path.exists(os.path.join(cwd, '..', 'conanfile.py')):
-            parent = os.path.normpath(os.path.join(cwd, '..'))
-        else:
-            parent = cwd
-
+    if local_cwd.startswith(config.SRC):
         upload_exclude = ['.git']
-        if os.path.exists(os.path.join(parent, 'cmake-build-debug')):
-            server.ssh('mkdir -p ' + os.path.join(parent, 'cmake-build-debug'))
-            upload_exclude.append('cmake-build-debug')
-            
-        server.upload(parent, upload_exclude)
+        if os.path.exists(os.path.join(local_cwd, '..', 'conanfile.txt')) or os.path.exists(os.path.join(local_cwd, '..', 'conanfile.py')):
+            local_parent = os.path.normpath(os.path.join(local_cwd, '..'))
+            upload_exclude.append(local_cwd.replace(local_parent, ''))
+        else:
+            local_parent = local_cwd
 
-        argv.insert(0, 'CXX=clang++')
-        argv.insert(0, 'CC=clang')
+        remote_parent = local_parent.replace(config.SRC, config.REMOTE_SRC)
+            
+        server.upload(local_parent, remote_parent, upload_exclude)
 
         if argv0 == 'conan':
-            #server.upload(os.path.join(config.CONANHOME, '.conan'), ['data'])
-            argv.insert(0, 'HOME=' + config.CONANHOME)
-            server.ssh_cd(cwd, ' '.join(escape(argv)))
+            server.ssh_cd(remote_cwd, ' '.join(escape(argv)))
             if 'info' in argv:
                 return
-            server.download(os.path.join(config.CONANHOME, '.conan'), [])
+            server.download(os.path.join(config.REMOTE_CONANHOME, '.conan'), os.path.join(config.CONANHOME, '.conan'), [])
         elif argv0 == 'cmake':
-            #server.upload(os.path.join(config.CONANHOME, '.conan'), ['data'])
-            server.ssh_cd(cwd, ' '.join(escape(argv)))
+            server.ssh_cd(remote_cwd, ' '.join(escape(argv)))
         elif argv0 == 'make':
-            server.ssh_cd(cwd, ' '.join(escape(argv)))
+            server.ssh_cd(remote_cwd, ' '.join(escape(argv)))
 
-        if parent != cwd:
-            server.download(cwd, ['.ssh'])
+        if local_parent != local_cwd:
+            server.download_tar(remote_cwd, local_cwd)
     else:
         if argv[1] == '-version':
             server.ssh(' '.join(escape(argv)))
         elif len(argv) == 4 and argv[3].startswith('/private/'):
 	    server.upload(argv[3], [])
-            server.ssh_cd(cwd, ' '.join(escape(argv)))
-	    server.ssh("sed -i.bak -e 's#CMAKE_MAKE_PROGRAM:FILEPATH=.*#CMAKE_MAKE_PROGRAM:FILEPATH={make}#' {cwd}/CMakeCache.txt".format(make=config.MAKE, cwd=cwd))
-	    server.ssh("sed -i.bak -e 's#CMAKE_C_COMPILER:FILEPATH=.*#CMAKE_C_COMPILER:FILEPATH={cc}#' {cwd}/CMakeCache.txt".format(cc=config.CC, cwd=cwd))
-	    server.ssh("sed -i.bak -e 's#CMAKE_CXX_COMPILER:FILEPATH=.*#CMAKE_CXX_COMPILER:FILEPATH={cxx}#' {cwd}/CMakeCache.txt".format(cxx=config.CXX, cwd=cwd))
+            server.ssh_cd(remote_cwd, ' '.join(escape(argv)))
+	    server.ssh("sed -i.bak -e 's#CMAKE_MAKE_PROGRAM:FILEPATH=.*#CMAKE_MAKE_PROGRAM:FILEPATH={make}#' {cwd}/CMakeCache.txt".format(make=config.MAKE, cwd=local_cwd))
+	    server.ssh("sed -i.bak -e 's#CMAKE_C_COMPILER:FILEPATH=.*#CMAKE_C_COMPILER:FILEPATH={cc}#' {cwd}/CMakeCache.txt".format(cc=config.CC, cwd=local_cwd))
+	    server.ssh("sed -i.bak -e 's#CMAKE_CXX_COMPILER:FILEPATH=.*#CMAKE_CXX_COMPILER:FILEPATH={cxx}#' {cwd}/CMakeCache.txt".format(cxx=config.CXX, cwd=local_cwd))
 	    server.download(argv[3], [])
             server.ssh('rm -rf ' + argv[3])
 
