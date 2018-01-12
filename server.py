@@ -43,24 +43,13 @@ class Server:
         print cmd
         subprocess.check_call(cmd, shell=True)
 
-    def download_tar(self, remote_path, local_path):
-        cmd = (
-            'ssh -p {port} {user}@{host} "cmd tar -czf - -C {src} ." | tar -xzf - -C {dst}').format(
-                user=self.user,
-                host=self.host,
-                port=self.port,
-                src=remote_path,
-                dst=local_path,
-                )
+    def ssh(self, command):
+        cmd = 'ssh -A -p {port} {user}@{host} "{cmd}"'.format(user=self.user, port=self.port, host=self.host, cmd=command)
         print cmd
         subprocess.check_call(cmd, shell=True)
 
-
-    def ssh(self, command):
-        cmd = 'ssh -A -p {port} {user}@{host} "{cmd}"'.format(user=self.user, port=self.port, host=self.host, cmd=command)
-        subprocess.check_call(cmd, shell=True)
-
     def ssh_cd(self, wd, command):
-        self.ssh('cd {wd}; {cmd}'.format(wd=wd, cmd=command))
+        cmd = 'cd {wd} && {cmd}'.format(wd=wd, cmd=command)
+        self.ssh(cmd)
 
 
