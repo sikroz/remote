@@ -40,7 +40,10 @@ def main():
             
         server.upload(local_parent, remote_parent, upload_exclude)
 
+        argv.insert(0, 'IN_DOCKER_HOME=' + config.HOME)
+        server.mkdir(remote_cwd)
         if argv0 == 'conan':
+            #argv.insert(0, 'CONANHOME=' + config.REMOTE_CONANHOME)
             server.ssh_cd(remote_cwd, ' '.join(escape(argv)))
             if 'info' in argv:
                 return
@@ -51,18 +54,19 @@ def main():
             server.ssh_cd(remote_cwd, ' '.join(escape(argv)))
 
         if local_parent != local_cwd:
-            server.download_tar(remote_cwd, local_cwd)
+            server.download(remote_cwd, local_cwd, [])
     else:
         if argv[1] == '-version':
-            server.ssh(' '.join(escape(argv)))
+            print 'cmake3 version 3.6.3'
+            #server.ssh(' '.join(escape(argv)), do_debug=False)
         elif len(argv) == 4 and argv[3].startswith('/private/'):
-	    server.upload(argv[3], [])
-            server.ssh_cd(remote_cwd, ' '.join(escape(argv)))
+            server.upload(argv[3], argv[3][1:], [])
+            server.ssh_cd(argv[3][1:], 'IN_DOCKER_HOME=' + config.HOME + ' ' + ' '.join(escape(argv)))
 	    server.ssh("sed -i.bak -e 's#CMAKE_MAKE_PROGRAM:FILEPATH=.*#CMAKE_MAKE_PROGRAM:FILEPATH={make}#' {cwd}/CMakeCache.txt".format(make=config.MAKE, cwd=local_cwd))
 	    server.ssh("sed -i.bak -e 's#CMAKE_C_COMPILER:FILEPATH=.*#CMAKE_C_COMPILER:FILEPATH={cc}#' {cwd}/CMakeCache.txt".format(cc=config.CC, cwd=local_cwd))
 	    server.ssh("sed -i.bak -e 's#CMAKE_CXX_COMPILER:FILEPATH=.*#CMAKE_CXX_COMPILER:FILEPATH={cxx}#' {cwd}/CMakeCache.txt".format(cxx=config.CXX, cwd=local_cwd))
-	    server.download(argv[3], [])
-            server.ssh('rm -rf ' + argv[3])
+            server.download(argv[3][1:], argv[3], [])
+            server.ssh('rm -rf private')
 
 if __name__ == '__main__':
     main()

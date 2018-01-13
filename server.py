@@ -8,8 +8,11 @@ class Server:
         self.host = config.BUILD_HOST
         self.port = config.BUILD_PORT
 
+    def mkdir(self, path):
+        self.ssh('mkdir -p {path}'.format(path=path))
+
     def upload(self, local_path, remote_path, exclude):
-        self.ssh('mkdir -p {path}'.format(path=remote_path))
+        self.mkdir(remote_path)
         cmd = (
             'rsync -trvlH'
             ' -e "ssh -p {port}"'
