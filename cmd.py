@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/local/bin/python3
 import sys
 import os
 import subprocess
@@ -33,7 +33,7 @@ def main():
         else:
             parent = cwd
 
-        upload_exclude = ['.git']
+        upload_exclude = ['.git', '.venv', '.vscode', 'build']
         if os.path.exists(os.path.join(parent, 'cmake-build-debug')):
             server.ssh('mkdir -p ' + os.path.join(parent, 'cmake-build-debug'))
             upload_exclude.append('cmake-build-debug')
@@ -49,11 +49,16 @@ def main():
             server.ssh_cd(cwd, ' '.join(escape(argv)))
             if 'info' in argv:
                 return
-            server.download(os.path.join(config.CONANHOME, '.conan'), [])
+            server.download(os.path.join(config.CONANHOME, '.conan'), ['lib'])
         elif argv0 == 'cmake':
             #server.upload(os.path.join(config.CONANHOME, '.conan'), ['data'])
+            server.upload(os.path.normpath(os.path.join(cwd, '..')), upload_exclude)
+            if '--build' not in argv:
+                cmake_index = argv.index('cmake')
+                argv.insert(cmake_index + 1, '-DCMAKE_CXX_STANDARD=17')
+                argv.insert(cmake_index + 1, '-DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS} -stdlib=libc++')
             server.ssh_cd(cwd, ' '.join(escape(argv)))
-        elif argv0 == 'make':
+        elif argv0 in ('make', 'ninja'):
             server.ssh_cd(cwd, ' '.join(escape(argv)))
 
         if parent != cwd:

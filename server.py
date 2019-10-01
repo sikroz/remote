@@ -1,4 +1,5 @@
 import subprocess
+from functools import reduce
 import config
 
 
@@ -21,7 +22,7 @@ class Server:
                 dst=path,
                 exclude=reduce(lambda x, y: x + ' --exclude {}'.format(y), exclude, '')
                 )
-        print cmd
+        print(cmd)
         subprocess.check_call(cmd, shell=True)
 
     def download(self, path, exclude):
@@ -37,14 +38,17 @@ class Server:
                 dst=path,
                 exclude=reduce(lambda x, y: x + ' --exclude {}'.format(y), exclude, '')
                 )
-        print cmd
+        print(cmd)
         subprocess.check_call(cmd, shell=True)
 
     def ssh(self, command):
         cmd = 'ssh -A -p {port} root@{host} "{cmd}"'.format(port=self.port, host=self.host, cmd=command)
-        subprocess.check_call(cmd, shell=True)
+        print(cmd)
+        subprocess.run(cmd, shell=True, check=True)
 
     def ssh_cd(self, wd, command):
-        self.ssh('cd {wd}; {cmd}'.format(wd=wd, cmd=command))
+        cmd = 'cd {wd}; {cmd}'.format(wd=wd, cmd=command)
+        print(cmd)
+        self.ssh(cmd)
 
 
